@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>W.E.S.L.E.Y.</title>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Open Sans', Helvetica, Arial, sans-serif;
+            background-color: #ffffff;
+            color: #333;
+        }
+
+        .main-content {
+            max-width: 1050px;
+            margin: 40px auto;
+            padding: 0 40px;
+        }
+
+        .content-row {
+            display: flex;
+            gap: 40px;
+        }
+
+        .column-left {
+            flex: 0 0 280px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .column-right {
+            flex: 1;
+            padding-top: 5px;
+        }
+
+        .section-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 25px;
+            color: #000;
+            display: flex;
+            align-items: center;
+        }
+
+        .section-title::after {
+            content: '//';
+            margin-left: 8px;
+            color: #999;
+            letter-spacing: 1px;
+            font-weight: 400;
+        }
+
+        .large-icon {
+            width: 260px;
+            height: 260px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 10px;
+            border-radius: 50%;
+            overflow: hidden; /* Ensures the image fits cleanly if it overflows */
+        }
+        
+        .large-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Maintain aspect ratio without stretching */
+        }
+
+        .header-logo-container {
+            display: flex;
+            align-items: center;
+            padding: 20px 40px 0;
+            max-width: 1050px;
+            margin: 0 auto;
+        }
+
+        .header-logo {
+            height: 60px;
+            width: auto;
+            border-radius: 50%;
+        }
+
+        .form-lead {
+            font-size: 14px;
+            margin-bottom: 20px;
+            line-height: 1.6;
+            color: #444;
+        }
+
+        .form-lead strong {
+            font-weight: 700;
+            color: #333;
+        }
+
+        .form-lead a {
+            color: #0071bc;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .form-lead a:hover {
+            text-decoration: underline;
+        }
+
+        .form-body-text {
+            font-size: 13px;
+            line-height: 1.6;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .tools-box {
+            background: #fff;
+            border: 1px solid #e1e8ed;
+            border-top: 2px solid #0071bc;
+            padding: 25px;
+            margin-bottom: 40px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        select,
+        input[type="file"] {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #ccc;
+            font-size: 13px;
+            font-family: inherit;
+            color: #333;
+            background: #fff;
+            border-radius: 2px;
+        }
+
+        select:focus,
+        input[type="file"]:focus {
+            border-color: #0071bc;
+            outline: none;
+        }
+
+        input[type="file"] {
+            padding: 4px;
+        }
+
+        button {
+            border: none;
+            padding: 10px 20px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            border-radius: 2px;
+        }
+
+        button:disabled {
+            background-color: #aaa !important;
+            cursor: not-allowed;
+        }
+
+        #analyzeBtn {
+            background-color: #0071bc;
+            color: white;
+            padding: 8px 16px;
+            margin-top: 5px;
+        }
+
+        #analyzeBtn:hover {
+            background-color: #005a96;
+        }
+
+        #generateMapBtn {
+            background-color: #28a745;
+            color: white;
+            margin-top: 5px;
+            padding: 8px 16px;
+        }
+
+        #generateMapBtn:hover {
+            background-color: #218838;
+        }
+
+        #result-container {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+            display: none;
+        }
+
+        .result-item {
+            font-size: 13px;
+            margin-bottom: 8px;
+            line-height: 1.5;
+            color: #444;
+        }
+
+        .result-label {
+            font-weight: 600;
+            color: #333;
+            margin-right: 8px;
+        }
+
+        #map-container {
+            margin-top: 20px;
+            display: none;
+            background: #f9f9f9;
+            padding: 15px;
+            border: 1px solid #eee;
+        }
+
+        #mapLoading {
+            font-size: 13px;
+            color: #666;
+            font-style: italic;
+            margin-bottom: 10px;
+        }
+
+        #mapImage {
+            max-width: 100%;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border: 1px solid #ddd;
+        }
+
+        .help-container {
+            position: fixed;
+            bottom: 0;
+            right: 20px;
+            z-index: 100;
+        }
+
+        .help-btn {
+            background-color: #0071bc;
+            color: white;
+            padding: 10px 20px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            border-radius: 3px 3px 0 0;
+        }
+
+        .help-btn:hover {
+            background-color: #005a96;
+        }
+
+        .top-btn {
+            position: fixed;
+            bottom: 60px;
+            right: 50px;
+            width: 40px;
+            height: 40px;
+            background-color: #666;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            color: white;
+            border: none;
+            z-index: 100;
+            padding: 0;
+            transition: background-color 0.2s;
+        }
+
+        .top-btn:hover {
+            background-color: #444;
+        }
+
+        .right-floating-icon {
+            position: fixed;
+            right: 0;
+            top: 30%;
+            background: #222;
+            color: #fff;
+            width: 30px;
+            height: 30px;
+            border-radius: 15px 0 0 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .reference-map {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 250px;
+            height: auto;
+            border: 3px solid #000;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            z-index: 2147483647; /* Maximum possible z-index */
+            background: #fff;
+            padding: 5px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .reference-map:hover {
+            transform: scale(1.05);
+        }
+
+        .reference-map img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 2147483647; 
+            left: 0;
+            top: 0;
+            width: 100%; 
+            height: 100%; 
+            overflow: auto; 
+            background-color: rgba(0,0,0,0.8); 
+        }
+
+        .modal-content {
+            margin: auto;
+            display: block;
+            max-width: 90%;
+            max-height: 90vh;
+            margin-top: 5vh;
+            animation-name: zoom;
+            animation-duration: 0.3s;
+        }
+
+        @keyframes zoom {
+            from {transform:scale(0)} 
+            to {transform:scale(1)}
+        }
+
+        .close {
+            position: absolute;
+            top: 15px;
+            right: 35px;
+            color: #f1f1f1;
+            font-size: 40px;
+            font-weight: bold;
+            transition: 0.3s;
+            cursor: pointer;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: #bbb;
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="right-floating-icon">
+        <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" width="16" height="16">
+            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+        </svg>
+    </div>
+
+    <header class="header-logo-container">
+        <img src="logo.png" alt="W.E.S.L.E.Y. Logo" class="header-logo">
+    </header>
+
+    <div class="main-content">
+        <div class="content-row">
+            <div class="column-left">
+                <div class="section-title">ABOUT INVASIVE DETECTION</div>
+                <div class="large-icon">
+                    <img src="logo.png" alt="W.E.S.L.E.Y." />
+                </div>
+            </div>
+
+            <div class="column-right">
+                <div class="form-lead">
+                    <strong>Looking for your local environmental analysis?</strong> Select a group and upload an aerial
+                    map photo to the <a href="#">Customize Your Analysis</a> box below.
+                </div>
+                <p class="form-body-text">
+                    Each year, ecosystems face challenges from non-native species that can alter habitats, deplete
+                    resources, and disrupt local wildlife. Our native regions log roughly 100,000 observations of
+                    disruptive plants, spanning over 5,000 distinct floodplains and drought areas. Invasive plant events
+                    account for an average of approximately 650 major ecological shifts. W.E.S.L.E.Y.
+                    provides analysis, hydrologic context, and environmental forecasts for the United States for the
+                    protection of native life and enhancement of natural areas.
+                </p>
+
+                <div class="tools-box">
+                    <form id="uploadForm">
+                        <div class="form-group">
+                            <label for="groupSelect">Select Analysis Group:</label>
+                            <select id="groupSelect" required>
+                                <option value="" disabled selected>Select a group...</option>
+                                <option value="1">Group 1</option>
+                                <option value="2">Group 2</option>
+                                <option value="3">Group 3</option>
+                                <option value="4">Group 4</option>
+                                <option value="5">Group 5</option>
+                                <option value="6">Group 6</option>
+                                <option value="7">Group 7</option>
+                                <option value="8">Group 8</option>
+                                <option value="9">Group 9</option>
+                                <option value="10">Group 10</option>
+                                <option value="11">Group 11</option>
+                                <option value="12">Group 12</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="imageInput">Upload Sector Photo:</label>
+                            <input type="file" id="imageInput" accept="image/*" required>
+                        </div>
+
+                        <button type="submit" id="analyzeBtn">Run Analysis</button>
+                    </form>
+
+                    <div id="result-container">
+                        <div class="result-item">
+                            <span class="result-label">Current Analysis :</span> <span id="currentResult"></span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Group Average :</span> <span id="groupAverage"></span>
+                        </div>
+                        <div class="result-item" style="font-size: 0.9em; color: #666;">
+                            <span class="result-label">Group Count :</span> <span id="groupCount"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-title">LIVE DETECTION MAPPING</div>
+                <p class="form-body-text" style="margin-bottom: 20px;">
+                    Your localized mapping context automatically updates based on recent data from your active session.
+                    This visual tool offers spatial reference for distribution. You can click the reference map in the bottom left corner to view it in full size.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <button class="top-btn" onclick="window.scrollTo(0, 0)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="18 15 12 9 6 15"></polyline>
+        </svg>
+    </button>
+
+    <div class="help-container">
+        <button class="help-btn">Help improve this site</button>
+    </div>
+
+    <div class="reference-map" id="referenceMapContainer" title="Click to enlarge">
+        <img id="referenceMapImg" src="Realmap.jpg" alt="Live Area Map">
+    </div>
+
+    <!-- The Modal -->
+    <div id="mapModal" class="modal">
+        <span class="close" id="closeModal">&times;</span>
+        <img class="modal-content" id="modalMapImg">
+    </div>
+
+    <script>
+        const form = document.getElementById('uploadForm');
+        const resultContainer = document.getElementById('result-container');
+        const currentResultSpan = document.getElementById('currentResult');
+        const groupAverageSpan = document.getElementById('groupAverage');
+        const groupCountSpan = document.getElementById('groupCount');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+
+        // Map elements
+        const referenceMapImg = document.getElementById('referenceMapImg');
+        const mapModal = document.getElementById('mapModal');
+        const modalMapImg = document.getElementById('modalMapImg');
+        const closeModal = document.getElementById('closeModal');
+        const referenceMapContainer = document.getElementById('referenceMapContainer');
+
+        // Modal Logic
+        referenceMapContainer.addEventListener('click', () => {
+            mapModal.style.display = "block";
+            modalMapImg.src = referenceMapImg.src; // Show whatever is currently loaded
+        });
+
+        closeModal.addEventListener('click', () => {
+            mapModal.style.display = "none";
+        });
+
+        window.onclick = function(event) {
+            if (event.target == mapModal) {
+                mapModal.style.display = "none";
+            }
+        }
+
+        // Live Map Update Logic
+        async function fetchAndUpdateMap() {
+            try {
+                const response = await fetch('/generate-map', { method: 'POST' });
+                const data = await response.json();
+                
+                if (response.ok && data.imageUrl) {
+                    referenceMapImg.src = data.imageUrl;
+                } else {
+                    console.error("Failed to generate map silently:", data.error);
+                }
+            } catch (error) {
+                console.error("Error fetching map update:", error);
+            }
+        }
+
+        // Initial Load
+        window.addEventListener('load', fetchAndUpdateMap);
+
+        function getColor(level) {
+            level = level ? level.trim() : '';
+            if (level === 'None') return '#28a745';
+            if (level === 'Low') return '#17a2b8';
+            if (level === 'Medium') return '#ffc107';
+            if (level === 'High') return '#fd7e14';
+            if (level === 'Severe') return '#dc3545';
+            return '#333';
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById('imageInput');
+            const groupSelect = document.getElementById('groupSelect');
+            const file = fileInput.files[0];
+            const group = groupSelect.value;
+
+            if (!file || !group) return;
+
+            const formData = new FormData();
+            formData.append('image', file);
+            formData.append('group', group);
+
+            analyzeBtn.textContent = '...';
+            analyzeBtn.disabled = true;
+            resultContainer.style.display = 'none';
+
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultContainer.style.display = 'block';
+
+                    currentResultSpan.innerHTML = `<strong>${data.result}</strong>`;
+                    currentResultSpan.style.color = getColor(data.result);
+
+                    groupAverageSpan.innerHTML = `<strong>${data.groupAverage}</strong>`;
+                    groupAverageSpan.style.color = getColor(data.groupAverage);
+
+                    groupCountSpan.textContent = data.groupCount;
+
+                } else {
+                    alert(`Error: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred.');
+            } finally {
+                analyzeBtn.textContent = 'Run Analysis';
+                analyzeBtn.disabled = false;
+                
+                // Refresh the map overlay with the new data silently
+                await fetchAndUpdateMap();
+            }
+        });
+    </script>
+</body>
+
+</html>
