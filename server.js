@@ -143,146 +143,39 @@ app.post('/analyze', upload.single('image'), async (req, res) => {
     }
 });
 
-// Map Generation Endpoint (Overlay on Map Base)
-app.post('/generate-map', async (req, res) => {
+// Scan Data Endpoint (returns group averages for client-side canvas rendering)
+app.get('/scan-data', async (req, res) => {
     try {
-        // 1. Fetch all group averages from Supabase
         const { data: allScans, error } = await supabase
             .from('scans')
             .select('group_id, invasive_level');
 
         if (error) throw error;
 
-        // Calculate averages per group
-        const groupSums = {};
-        const groupCounts = {};
-
-        // Initialize for groups 1-12
+        const groups = {};
         for (let i = 1; i <= 12; i++) {
-            groupSums[i] = 0;
-            groupCounts[i] = 0;
+            groups[i] = { sum: 0, count: 0, average: 0 };
         }
 
-        allScans.forEach(scan => {
-            if (groupSums[scan.group_id] !== undefined) {
-                groupSums[scan.group_id] += scan.invasive_level;
-                groupCounts[scan.group_id]++;
-            }
-        });
-
-        // 2. Load Base Image (bundled into function via vercel.json includeFiles)
-        const localPath = path.join(__dirname, 'public', 'Realmap.jpg');
-        
-        console.log('Loading map from:', localPath);
-        
-        let image;
-        try {
-            image = await Jimp.read(localPath);
-            console.log('Map loaded successfully, dimensions:', image.bitmap.width, 'x', image.bitmap.height);
-        } catch (err) {
-            console.error("Error loading Realmap.jpg:", err);
-            return res.status(500).json({ error: `Could not load base map. Error: ${err.message}` });
-        }
-
-        // 3. Define Coordinates (Approximate based on 10 distinct areas)
-        // Adjust these coordinates based on your actual map_base.jpg resolution!
-        // These are percentage-based (0.0 to 1.0) to work with any image size
-        // 3x4 grid mapping: columns at 0.125, 0.375, 0.625, 0.875 and rows at 0.166, 0.5, 0.833
-        const coordinates = {
-            1: { x: 0.125, y: 0.166 }, 
-            2: { x: 0.375, y: 0.166 }, 
-            3: { x: 0.625, y: 0.166 }, 
-            4: { x: 0.875, y: 0.166 }, 
-            5: { x: 0.125, y: 0.5 },  
-            6: { x: 0.375, y: 0.5 },  
-            7: { x: 0.625, y: 0.5 },  
-            8: { x: 0.875, y: 0.5 }, 
-            9: { x: 0.125, y: 0.833 }, 
-            10: { x: 0.375, y: 0.833 },
-            11: { x: 0.625, y: 0.833 },
-            12: { x: 0.875, y: 0.833 } 
-        };
-
-        const width = image.bitmap.width;
-        const height = image.bitmap.height;
-
-        // 4. Overlay Circles
-        for (let i = 1; i <= 12; i++) {
-            let colorHex;
-
-            // Determine Color
-            if (groupCounts[i] === 0) {
-                // If no data, maybe no overlay? Or transparent?
-                // Let's explicitly mark it as 'Gray' or skip
-                // Skipping for now if no data, or we could show Green (None) as default
-                // User requirement: "Green means none". Let's assume default is Green/None if no scans.
-                colorHex = '#00FF00'; // Green
-            } else {
-                const avg = groupSums[i] / groupCounts[i];
-                const roundedAvg = Math.round(avg);
-
-                switch (roundedAvg) {
-                    case 0: colorHex = '#008000'; break; // Green (None)
-                    case 1: colorHex = '#0000FF'; break; // Blue (Low)
-                    case 2: colorHex = '#FFFF00'; break; // Yellow (Medium)
-                    case 3: colorHex = '#FFA500'; break; // Orange (High)
-                    case 4: colorHex = '#FF0000'; break; // Red (Severe)
-                    default: colorHex = '#008000';
-                }
-            }
-
-            // Create a circle image to composite
-            // Radius proportional to image size, e.g., 5% of width
-            const radius = Math.floor(width * 0.05);
-            const circle = new Jimp({ width: radius * 2, height: radius * 2, color: 0x00000000 }); // Transparent
-
-            // Draw circle manually or use scan/pixel methods
-            // Jimp doesn't have a simple 'drawCircle' method in basic version, 
-            // but we can scan pixels.
-            // Or simpler: just color the whole square block semi-transparently?
-            // "Highlight the area around".
-
-            // Let's create a semi-transparent colored block for simplicity/reliability
-            // with a mask if possible, or just a square for now if circle is hard.
-            // Actually, scanning a circle is easy.
-
-            const center = radius;
-            const rSquared = radius * radius;
-
-            // Convert Hex to Int with Alpha (e.g. 50% opacity = 0x80)
-            const colorInt = parseInt(colorHex.replace('#', '') + '80', 16);
-
-            circle.scan(0, 0, circle.bitmap.width, circle.bitmap.height, function (x, y, idx) {
-                const dx = x - center;
-                const dy = y - center;
-                if (dx * dx + dy * dy <= rSquared) {
-                    this.setPixelColor(colorInt, x, y);
+        if (allScans) {
+            allScans.forEach(scan => {
+                if (groups[scan.group_id]) {
+                    groups[scan.group_id].sum += scan.invasive_level;
+                    groups[scan.group_id].count++;
                 }
             });
-
-            // Overlay position
-            const xPos = Math.floor((coordinates[i].x * width) - radius);
-            const yPos = Math.floor((coordinates[i].y * height) - radius);
-
-            image.composite(circle, xPos, yPos);
-
-            // Optional: Add Number Text? 
-            // Jimp loadFont takes time and promises.
-            // Let's just overlay the color for now as requested.
         }
 
-        // 5. Get Buffer and Return
-        const buffer = await image.getBuffer('image/jpeg');
-        const base64Image = buffer.toString('base64');
-        const dataUrl = `data:image/jpeg;base64,${base64Image}`;
+        for (let i = 1; i <= 12; i++) {
+            if (groups[i].count > 0) {
+                groups[i].average = Math.round(groups[i].sum / groups[i].count);
+            }
+        }
 
-        res.json({ imageUrl: dataUrl });
-
+        res.json({ groups });
     } catch (error) {
-        console.error("Error generating map:", error);
-        if (error.code) console.error("Error code:", error.code);
-        if (error.message) console.error("Error message:", error.message);
-        res.status(500).json({ error: 'Failed to generate map', details: error.message });
+        console.error("Error fetching scan data:", error);
+        res.status(500).json({ error: 'Failed to fetch scan data' });
     }
 });
 

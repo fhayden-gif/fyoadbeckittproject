@@ -472,7 +472,7 @@
     </div>
 
     <div class="reference-map" id="referenceMapContainer" title="Click to enlarge">
-        <img id="referenceMapImg" src="Realmap.jpg" alt="Live Area Map">
+        <canvas id="referenceMapCanvas" style="width:100%;height:auto;display:block;"></canvas>
     </div>
 
     <!-- The Modal -->
@@ -490,41 +490,74 @@
         const analyzeBtn = document.getElementById('analyzeBtn');
 
         // Map elements
-        const referenceMapImg = document.getElementById('referenceMapImg');
+        const mapCanvas = document.getElementById('referenceMapCanvas');
+        const mapCtx = mapCanvas.getContext('2d');
         const mapModal = document.getElementById('mapModal');
         const modalMapImg = document.getElementById('modalMapImg');
         const closeModal = document.getElementById('closeModal');
         const referenceMapContainer = document.getElementById('referenceMapContainer');
 
-        // Modal Logic
-        referenceMapContainer.addEventListener('click', () => {
-            mapModal.style.display = "block";
-            modalMapImg.src = referenceMapImg.src; // Show whatever is currently loaded
-        });
+        // Preload base map
+        const baseMapImg = new Image();
+        baseMapImg.src = 'Realmap.jpg';
 
-        closeModal.addEventListener('click', () => {
-            mapModal.style.display = "none";
-        });
+        const gridCoords = {
+            1:{x:0.125,y:0.166}, 2:{x:0.375,y:0.166}, 3:{x:0.625,y:0.166}, 4:{x:0.875,y:0.166},
+            5:{x:0.125,y:0.5},   6:{x:0.375,y:0.5},   7:{x:0.625,y:0.5},   8:{x:0.875,y:0.5},
+            9:{x:0.125,y:0.833}, 10:{x:0.375,y:0.833}, 11:{x:0.625,y:0.833}, 12:{x:0.875,y:0.833}
+        };
 
-        window.onclick = function(event) {
-            if (event.target == mapModal) {
-                mapModal.style.display = "none";
+        function getLevelColor(avg) {
+            switch(avg) {
+                case 0: return 'rgba(0,128,0,0.5)';
+                case 1: return 'rgba(0,0,255,0.5)';
+                case 2: return 'rgba(255,255,0,0.5)';
+                case 3: return 'rgba(255,165,0,0.5)';
+                case 4: return 'rgba(255,0,0,0.5)';
+                default: return 'rgba(0,255,0,0.5)';
             }
         }
 
-        // Live Map Update Logic
+        function drawMapWithOverlays(groups) {
+            const w = baseMapImg.naturalWidth;
+            const h = baseMapImg.naturalHeight;
+            mapCanvas.width = w;
+            mapCanvas.height = h;
+            mapCtx.drawImage(baseMapImg, 0, 0, w, h);
+            const radius = Math.floor(w * 0.05);
+            for (let i = 1; i <= 12; i++) {
+                const grp = groups[i];
+                const color = (grp && grp.count > 0) ? getLevelColor(grp.average) : 'rgba(0,255,0,0.5)';
+                mapCtx.beginPath();
+                mapCtx.arc(gridCoords[i].x * w, gridCoords[i].y * h, radius, 0, Math.PI * 2);
+                mapCtx.fillStyle = color;
+                mapCtx.fill();
+            }
+        }
+
+        // Modal Logic
+        referenceMapContainer.addEventListener('click', () => {
+            mapModal.style.display = 'block';
+            modalMapImg.src = mapCanvas.toDataURL('image/jpeg');
+        });
+
+        closeModal.addEventListener('click', () => { mapModal.style.display = 'none'; });
+        window.onclick = function(event) { if (event.target == mapModal) mapModal.style.display = 'none'; }
+
+        // Client-side map rendering
         async function fetchAndUpdateMap() {
             try {
-                const response = await fetch('/generate-map', { method: 'POST' });
+                const response = await fetch('/scan-data');
                 const data = await response.json();
-                
-                if (response.ok && data.imageUrl) {
-                    referenceMapImg.src = data.imageUrl;
+                if (response.ok && data.groups) {
+                    if (baseMapImg.complete) drawMapWithOverlays(data.groups);
+                    else baseMapImg.onload = () => drawMapWithOverlays(data.groups);
                 } else {
-                    console.error("Failed to generate map silently:", data.error);
+                    if (baseMapImg.complete) drawMapWithOverlays({});
                 }
             } catch (error) {
-                console.error("Error fetching map update:", error);
+                console.error('Error fetching map:', error);
+                if (baseMapImg.complete) drawMapWithOverlays({});
             }
         }
 
