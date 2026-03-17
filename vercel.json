@@ -1,10 +1,6 @@
 {
   "version": 2,
   "rewrites": [
-    { "source": "/analyze", "destination": "/server.js" },
-    { "source": "/generate-map", "destination": "/server.js" },
-    { "source": "/groups/(.*)", "destination": "/server.js" },
-    { "source": "/", "destination": "/public/index.html" },
-    { "source": "/(.*)", "destination": "/public/$1" }
+    { "source": "/(.*)", "destination": "/server.js" }
   ]
 }

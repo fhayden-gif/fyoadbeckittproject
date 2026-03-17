@@ -308,6 +308,11 @@ app.get('/groups/:id/images', async (req, res) => {
     }
 });
 
+// Explicit fallback to serve the frontend on root when deploying serverless
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 if (process.env.NODE_ENV !== 'production' && !isVercel) {
     app.listen(port, () => {
         console.log(`Server running at http://localhost:${port}`);
