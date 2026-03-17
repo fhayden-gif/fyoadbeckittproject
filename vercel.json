@@ -1,6 +1,19 @@
 {
   "version": 2,
+  "builds": [
+    {
+      "src": "server.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "public/**/*",
+      "use": "@vercel/static"
+    }
+  ],
   "rewrites": [
-    { "source": "/(.*)", "destination": "/server.js" }
+    { "source": "/analyze", "destination": "/server.js" },
+    { "source": "/generate-map", "destination": "/server.js" },
+    { "source": "/groups/(.*)", "destination": "/server.js" },
+    { "source": "/(.*)", "destination": "/public/$1" }
   ]
 }

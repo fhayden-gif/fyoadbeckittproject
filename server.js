@@ -30,14 +30,14 @@ app.use(express.static('public')); // Serve static files from 'public' directory
 const { createClient } = require('@supabase/supabase-js');
 const { Jimp } = require('jimp');
 
-// Initialize OpenAI
+// Initialize OpenAI (Provide fallback string to prevent startup crash on Vercel)
 const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+    apiKey: process.env.OPENAI_API_KEY || 'dummy-key-to-prevent-startup-crash',
 });
 
-// Initialize Supabase
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
+// Initialize Supabase (Provide fallback string to prevent startup crash on Vercel)
+const supabaseUrl = process.env.SUPABASE_URL || 'https://dummy-url-to-prevent-startup-crash.supabase.co';
+const supabaseKey = process.env.SUPABASE_KEY || 'dummy-key-to-prevent-startup-crash';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const INVASIVE_LEVELS = {
@@ -306,11 +306,6 @@ app.get('/groups/:id/images', async (req, res) => {
         console.error("Error fetching group images:", error);
         res.status(500).json({ error: 'Failed to fetch images' });
     }
-});
-
-// Explicit fallback to serve the frontend on root when deploying serverless
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 if (process.env.NODE_ENV !== 'production' && !isVercel) {
