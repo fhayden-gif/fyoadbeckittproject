@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "server.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    { "src": "/analyze", "dest": "/server.js" },
+    { "src": "/generate-map", "dest": "/server.js" },
+    { "src": "/groups/(.*)", "dest": "/server.js" },
+    { "src": "/(.*\\.(jpg|jpeg|png|gif|css|js|ico|svg|woff|woff2|ttf|eot))", "dest": "/public/$1" },
+    { "src": "/(.*)", "dest": "/server.js" }
+  ]
+}
