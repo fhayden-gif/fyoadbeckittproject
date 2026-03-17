@@ -11,7 +11,7 @@ const port = process.env.PORT || 3000;
 
 // Ensure uploads directory exists (use /tmp in Vercel/serverless environments)
 const isVercel = process.env.VERCEL || process.env.NOW_REGION;
-const uploadsDir = isVercel ? '/tmp' : path.join(__dirname, 'public', 'uploads');
+const uploadsDir = isVercel ? '/tmp' : path.join(__dirname, '..', 'public', 'uploads');
 if (!isVercel && !fs.existsSync(uploadsDir)) {
     try {
         fs.mkdirSync(uploadsDir, { recursive: true });
@@ -25,7 +25,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 // Middleware
 app.use(cors());
-app.use(express.static('public')); // Serve static files from 'public' directory
+app.use(express.static(path.join(__dirname, '..', 'public'))); // Serve static files from '../public' directory
 
 const { createClient } = require('@supabase/supabase-js');
 const { Jimp } = require('jimp');
@@ -172,7 +172,7 @@ app.post('/generate-map', async (req, res) => {
 
         // 2. Load Base Image
         const mapUrl = req.protocol + '://' + req.get('host') + '/Realmap.jpg';
-        const localPath = path.join(__dirname, 'public', 'Realmap.jpg');
+        const localPath = path.join(__dirname, '..', 'public', 'Realmap.jpg');
         
         let image;
         try {

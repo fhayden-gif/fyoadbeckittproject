@@ -515,7 +515,7 @@
         // Live Map Update Logic
         async function fetchAndUpdateMap() {
             try {
-                const response = await fetch('/generate-map', { method: 'POST' });
+                const response = await fetch('/api/generate-map', { method: 'POST' });
                 const data = await response.json();
                 
                 if (response.ok && data.imageUrl) {
@@ -559,7 +559,7 @@
             resultContainer.style.display = 'none';
 
             try {
-                const response = await fetch('/analyze', {
+                const response = await fetch('/api/analyze', {
                     method: 'POST',
                     body: formData
                 });
