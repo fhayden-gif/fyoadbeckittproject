@@ -171,13 +171,16 @@ app.post('/generate-map', async (req, res) => {
         });
 
         // 2. Load Base Image
-        const mapPath = path.join(__dirname, 'public', 'Realmap.jpg');
+        const mapUrl = req.protocol + '://' + req.get('host') + '/Realmap.jpg';
+        const localPath = path.join(__dirname, 'public', 'Realmap.jpg');
+        
         let image;
         try {
-            image = await Jimp.read(mapPath);
+            // Load from URL if deployed to Vercel, else load from local disk
+            image = await Jimp.read(isVercel ? mapUrl : localPath);
         } catch (err) {
             console.error("Error loading Realmap.jpg:", err);
-            return res.status(500).json({ error: 'Could not load base map. Please ensure public/Realmap.jpg exists.' });
+            return res.status(500).json({ error: `Could not load base map from ${isVercel ? mapUrl : localPath}.` });
         }
 
         // 3. Define Coordinates (Approximate based on 10 distinct areas)

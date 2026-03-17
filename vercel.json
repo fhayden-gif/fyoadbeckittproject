@@ -1,31 +1,9 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "server.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "public/**/*",
-      "use": "@vercel/static"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/analyze",
-      "dest": "/server.js"
-    },
-    {
-      "src": "/generate-map",
-      "dest": "/server.js"
-    },
-    {
-      "src": "/groups/(.*)",
-      "dest": "/server.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/public/$1"
-    }
+  "rewrites": [
+    { "source": "/analyze", "destination": "/server.js" },
+    { "source": "/generate-map", "destination": "/server.js" },
+    { "source": "/groups/(.*)", "destination": "/server.js" },
+    { "source": "/(.*)", "destination": "/public/$1" }
   ]
 }
