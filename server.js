@@ -7,12 +7,17 @@ const cors = require('cors');
 const fs = require('fs');
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
-// Ensure uploads directory exists
-const uploadsDir = path.join(__dirname, 'public', 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
+// Ensure uploads directory exists (use /tmp in Vercel/serverless environments)
+const isVercel = process.env.VERCEL || process.env.NOW_REGION;
+const uploadsDir = isVercel ? '/tmp' : path.join(__dirname, 'public', 'uploads');
+if (!isVercel && !fs.existsSync(uploadsDir)) {
+    try {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+    } catch (err) {
+        console.warn('Could not create local uploads dir, continuing anyway...', err);
+    }
 }
 
 // Configure Multer for memory storage
@@ -85,11 +90,18 @@ app.post('/analyze', upload.single('image'), async (req, res) => {
         if (INVASIVE_LEVELS.hasOwnProperty(result)) {
             const levelValue = INVASIVE_LEVELS[result];
 
-            // 1. Save Image Locally
+            // 1. Save Image (Using /tmp if on Vercel)
             const filename = `scan_${groupId}_${Date.now()}.jpg`;
             const filepath = path.join(uploadsDir, filename);
-            fs.writeFileSync(filepath, req.file.buffer);
-            const relativeImagePath = `/uploads/${filename}`;
+            try {
+                fs.writeFileSync(filepath, req.file.buffer);
+            } catch (err) {
+                console.error("Failed to write to local directory:", err);
+            }
+            
+            // In Vercel, local /tmp files aren't persistently servable.
+            // Ideally should upload to cloud storage (e.g. Supabase Storage).
+            const relativeImagePath = isVercel ? null : `/uploads/${filename}`;
 
             // 2. Insert into Supabase
             const { error: insertError } = await supabase
@@ -293,6 +305,11 @@ app.get('/groups/:id/images', async (req, res) => {
     }
 });
 
-app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
-});
+if (process.env.NODE_ENV !== 'production' && !isVercel) {
+    app.listen(port, () => {
+        console.log(`Server running at http://localhost:${port}`);
+    });
+}
+
+// Export the app for Vercel Serverless Function compatibility
+module.exports = app;
