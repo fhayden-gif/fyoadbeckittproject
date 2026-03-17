@@ -159,9 +159,10 @@ app.get('/scan-data', async (req, res) => {
 
         if (allScans) {
             allScans.forEach(scan => {
-                if (groups[scan.group_id]) {
-                    groups[scan.group_id].sum += scan.invasive_level;
-                    groups[scan.group_id].count++;
+                const gid = parseInt(scan.group_id);
+                if (groups[gid]) {
+                    groups[gid].sum += scan.invasive_level;
+                    groups[gid].count++;
                 }
             });
         }
