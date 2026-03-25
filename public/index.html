@@ -440,13 +440,27 @@
 
                     <div id="result-container">
                         <div class="result-item">
-                            <span class="result-label">Current Analysis :</span> <span id="currentResult"></span>
+                            <span class="result-label">Severity Level :</span> <span id="currentResult"></span>
                         </div>
                         <div class="result-item">
                             <span class="result-label">Group Average :</span> <span id="groupAverage"></span>
                         </div>
-                        <div class="result-item" style="font-size: 0.9em; color: #666;">
+                        <div class="result-item" style="font-size: 0.9em; color: #666; margin-bottom: 15px;">
                             <span class="result-label">Group Count :</span> <span id="groupCount"></span>
+                        </div>
+                        
+                        <div id="invasiveDetails" style="display: none; border-top: 1px solid #eee; padding-top: 15px;">
+                            <div class="section-title" style="margin-bottom: 10px;">IDENTIFIED INVASIVES</div>
+                            <ul id="invasiveList" style="list-style-type: disc; margin-left: 20px; font-size: 13px; color: #444; margin-bottom: 15px;"></ul>
+                            
+                            <div class="section-title" style="margin-bottom: 10px;">REMOVAL INSTRUCTIONS</div>
+                            <div id="removalInstructionsList" style="font-size: 13px; color: #444; line-height: 1.5; margin-bottom: 15px;"></div>
+                            
+                            <div class="section-title" style="margin-bottom: 10px;">EASIEST TO REMOVE</div>
+                            <div style="font-size: 13px; color: #444; margin-bottom: 10px;">
+                                A star <span style="font-size:16px;">🌟</span> has been placed on the easiest-to-remove invasive cluster.
+                            </div>
+                            <img id="processedImage" src="" alt="Analyzed Area" style="max-width: 100%; border: 1px solid #ccc; border-radius: 4px; display: none;">
                         </div>
                     </div>
                 </div>
@@ -609,6 +623,41 @@
                     groupAverageSpan.style.color = getColor(data.groupAverage);
 
                     groupCountSpan.textContent = data.groupCount;
+                    
+                    const detailsDiv = document.getElementById('invasiveDetails');
+                    const listUl = document.getElementById('invasiveList');
+                    const instructionsDiv = document.getElementById('removalInstructionsList');
+                    const processedImg = document.getElementById('processedImage');
+
+                    if (data.identifiedInvasives && data.identifiedInvasives.length > 0) {
+                        detailsDiv.style.display = 'block';
+                        
+                        listUl.innerHTML = '';
+                        data.identifiedInvasives.forEach(item => {
+                            const li = document.createElement('li');
+                            li.textContent = item;
+                            listUl.appendChild(li);
+                        });
+                        
+                        instructionsDiv.innerHTML = '';
+                        if (data.removalInstructions) {
+                            for (const [species, instruction] of Object.entries(data.removalInstructions)) {
+                                const p = document.createElement('p');
+                                p.innerHTML = `<strong>${species}:</strong> ${instruction}`;
+                                p.style.marginBottom = '8px';
+                                instructionsDiv.appendChild(p);
+                            }
+                        }
+                        
+                        if (data.processedImageBase64) {
+                            processedImg.src = data.processedImageBase64;
+                            processedImg.style.display = 'block';
+                        } else {
+                            processedImg.style.display = 'none';
+                        }
+                    } else {
+                        detailsDiv.style.display = 'none';
+                    }
 
                 } else {
                     alert(`Error: ${data.error}`);
