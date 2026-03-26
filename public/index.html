@@ -456,9 +456,8 @@
                             
                             <div class="section-title" style="margin-bottom: 10px;">EASIEST TO REMOVE</div>
                             <div style="font-size: 13px; color: #444; margin-bottom: 10px;">
-                                A star <span style="font-size:16px;">🌟</span> has been placed on the easiest-to-remove invasive cluster.
+                                A star <span style="font-size:16px;">🌟</span> will be placed on the overall easiest-to-remove invasive cluster directly on the Live Detection Map.
                             </div>
-                            <img id="processedImage" src="" alt="Analyzed Area" style="max-width: 100%; border: 1px solid #ccc; border-radius: 4px; display: none;">
                         </div>
                     </div>
                     
@@ -548,20 +547,31 @@
             }
         }
 
-        function drawMapWithOverlays(groups) {
+        function drawMapWithOverlays(groups, starGroupId = null) {
             const w = baseMapImg.naturalWidth;
             const h = baseMapImg.naturalHeight;
             mapCanvas.width = w;
             mapCanvas.height = h;
             mapCtx.drawImage(baseMapImg, 0, 0, w, h);
             const radius = Math.floor(w * 0.05);
+            
             for (let i = 1; i <= 12; i++) {
                 const grp = groups[i];
                 const color = (grp && grp.count > 0) ? getLevelColor(grp.average) : 'rgba(0,255,0,0.5)';
+                const cx = gridCoords[i].x * w;
+                const cy = gridCoords[i].y * h;
+                
                 mapCtx.beginPath();
-                mapCtx.arc(gridCoords[i].x * w, gridCoords[i].y * h, radius, 0, Math.PI * 2);
+                mapCtx.arc(cx, cy, radius, 0, Math.PI * 2);
                 mapCtx.fillStyle = color;
                 mapCtx.fill();
+                
+                if (starGroupId === i) {
+                    mapCtx.font = `${Math.floor(radius * 1.5)}px Arial`;
+                    mapCtx.textAlign = "center";
+                    mapCtx.textBaseline = "middle";
+                    mapCtx.fillText("⭐", cx, cy);
+                }
             }
         }
 
@@ -580,8 +590,8 @@
                 const response = await fetch('/scan-data');
                 const data = await response.json();
                 if (response.ok && data.groups) {
-                    if (baseMapImg.complete) drawMapWithOverlays(data.groups);
-                    else baseMapImg.onload = () => drawMapWithOverlays(data.groups);
+                    if (baseMapImg.complete) drawMapWithOverlays(data.groups, data.starGroupId);
+                    else baseMapImg.onload = () => drawMapWithOverlays(data.groups, data.starGroupId);
                 } else {
                     if (baseMapImg.complete) drawMapWithOverlays({});
                 }
@@ -687,7 +697,6 @@
                     const detailsDiv = document.getElementById('invasiveDetails');
                     const listUl = document.getElementById('invasiveList');
                     const instructionsDiv = document.getElementById('removalInstructionsList');
-                    const processedImg = document.getElementById('processedImage');
 
                     if (data.identifiedInvasives && data.identifiedInvasives.length > 0) {
                         detailsDiv.style.display = 'block';
@@ -707,13 +716,6 @@
                                 p.style.marginBottom = '8px';
                                 instructionsDiv.appendChild(p);
                             }
-                        }
-                        
-                        if (data.processedImageBase64) {
-                            processedImg.src = data.processedImageBase64;
-                            processedImg.style.display = 'block';
-                        } else {
-                            processedImg.style.display = 'none';
                         }
                     } else {
                         detailsDiv.style.display = 'none';

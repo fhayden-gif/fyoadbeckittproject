@@ -18,3 +18,6 @@ create policy "Enable insert access for all users" on public.scans for insert wi
 -- Added for Gallery feature:
 -- Run this in your Supabase SQL editor to support storing images:
 -- ALTER TABLE public.scans ADD COLUMN image_path text;
+
+-- Added for Reference Map Star targeting:
+-- ALTER TABLE public.scans ADD COLUMN removal_difficulty int DEFAULT 50;

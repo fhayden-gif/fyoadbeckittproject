@@ -71,7 +71,7 @@ app.post('/analyze', upload.single('image'), async (req, res) => {
                 {
                     role: "user",
                     content: [
-                        { type: "text", text: "Analyze this aerial photo for invasive species. Return a JSON object with the following properties: 'level' (ONLY one of: None, Low, Medium, High, Severe), 'identifiedInvasives' (array of species names), 'removalInstructions' (object with species as keys and removal instructions as values), and 'easiestToRemove' (object with 'name', 'x', and 'y'. x and y must be normalized coordinates between 0.0 and 1.0 pointing to the center of the easiest to remove invasive species in the image). Return valid JSON." },
+                        { type: "text", text: "Analyze this aerial photo for invasive species. Return a JSON object with the following properties: 'level' (ONLY one of: None, Low, Medium, High, Severe), 'identifiedInvasives' (array of species names), 'removalInstructions' (object with species as keys and removal instructions as values), and 'removalDifficulty' (integer from 1 to 100, where 1 is extremely easy and 100 is impossible to remove). Return valid JSON." },
                         {
                             type: "image_url",
                             image_url: {
@@ -96,35 +96,13 @@ app.post('/analyze', upload.single('image'), async (req, res) => {
 
         if (INVASIVE_LEVELS.hasOwnProperty(result)) {
             const levelValue = INVASIVE_LEVELS[result];
+            const difficulty = jsonResult.removalDifficulty || 50;
 
-            // 1. Process Image and add star
-            let finalImageBuffer = req.file.buffer;
-            let processedImageBase64 = null;
-            
-            try {
-                const image = await Jimp.read(req.file.buffer);
-                if (jsonResult.easiestToRemove && typeof jsonResult.easiestToRemove.x === 'number' && typeof jsonResult.easiestToRemove.y === 'number') {
-                    const star = await Jimp.read(path.join(__dirname, 'public', 'star.png'));
-                    // Resize star to 10% of width
-                    const starWidth = Math.max(30, Math.floor(image.bitmap.width * 0.1));
-                    star.resize({ w: starWidth });
-                    
-                    const drawX = Math.floor(jsonResult.easiestToRemove.x * image.bitmap.width) - Math.floor(star.bitmap.width / 2);
-                    const drawY = Math.floor(jsonResult.easiestToRemove.y * image.bitmap.height) - Math.floor(star.bitmap.height / 2);
-                    
-                    image.composite(star, drawX, drawY);
-                }
-                finalImageBuffer = await image.getBuffer("image/jpeg");
-                processedImageBase64 = "data:image/jpeg;base64," + finalImageBuffer.toString('base64');
-            } catch (err) {
-                console.error("Failed to process image with Jimp, using original:", err);
-            }
-
-            // Save Image (Using /tmp if on Vercel)
+            // Save Original Image (Using /tmp if on Vercel)
             const filename = `scan_${groupId}_${Date.now()}.jpg`;
             const filepath = path.join(uploadsDir, filename);
             try {
-                fs.writeFileSync(filepath, finalImageBuffer);
+                fs.writeFileSync(filepath, req.file.buffer);
             } catch (err) {
                 console.error("Failed to write to local directory:", err);
             }
@@ -133,12 +111,24 @@ app.post('/analyze', upload.single('image'), async (req, res) => {
             // Ideally should upload to cloud storage (e.g. Supabase Storage).
             const relativeImagePath = isVercel ? null : `/uploads/${filename}`;
 
-            // 2. Insert into Supabase
-            const { error: insertError } = await supabase
+            // Insert into Supabase
+            // Attempt with new column, fallback if not present
+            let insertError = null;
+            const { error: err1 } = await supabase
                 .from('scans')
                 .insert([
-                    { group_id: groupId, invasive_level: levelValue, image_path: relativeImagePath }
+                    { group_id: groupId, invasive_level: levelValue, image_path: relativeImagePath, removal_difficulty: difficulty }
                 ]);
+            
+            if (err1) {
+                console.warn("Falling back to insert without removal_difficulty column (User may not have run migration).");
+                const { error: err2 } = await supabase
+                    .from('scans')
+                    .insert([
+                        { group_id: groupId, invasive_level: levelValue, image_path: relativeImagePath }
+                    ]);
+                insertError = err2;
+            }
 
             if (insertError) {
                 console.error("Supabase Insert Error:", insertError);
@@ -165,8 +155,7 @@ app.post('/analyze', upload.single('image'), async (req, res) => {
                 groupAverage: averageLabel, 
                 groupCount: groupCount,
                 identifiedInvasives: jsonResult.identifiedInvasives || [],
-                removalInstructions: jsonResult.removalInstructions || {},
-                processedImageBase64: processedImageBase64
+                removalInstructions: jsonResult.removalInstructions || {}
             });
 
         } else {
@@ -183,15 +172,28 @@ app.post('/analyze', upload.single('image'), async (req, res) => {
 // Scan Data Endpoint (returns group averages for client-side canvas rendering)
 app.get('/scan-data', async (req, res) => {
     try {
-        const { data: allScans, error } = await supabase
-            .from('scans')
-            .select('group_id, invasive_level');
+        let allScans = [];
+        let hasDifficulty = true;
 
-        if (error) throw error;
+        const { data, error } = await supabase
+            .from('scans')
+            .select('group_id, invasive_level, removal_difficulty');
+
+        if (error) {
+            console.warn("Falling back to standard view, removal_difficulty column missing.");
+            const { data: fallbackData, error: fallbackError } = await supabase
+                .from('scans')
+                .select('group_id, invasive_level');
+            if (fallbackError) throw fallbackError;
+            allScans = fallbackData || [];
+            hasDifficulty = false;
+        } else {
+            allScans = data || [];
+        }
 
         const groups = {};
         for (let i = 1; i <= 12; i++) {
-            groups[i] = { sum: 0, count: 0, average: 0 };
+            groups[i] = { sum: 0, diffSum: 0, count: 0, average: 0, avgDiff: 50 };
         }
 
         if (allScans) {
@@ -199,18 +201,38 @@ app.get('/scan-data', async (req, res) => {
                 const gid = parseInt(scan.group_id);
                 if (groups[gid]) {
                     groups[gid].sum += scan.invasive_level;
+                    const diff = scan.removal_difficulty !== null && scan.removal_difficulty !== undefined ? scan.removal_difficulty : 50;
+                    groups[gid].diffSum += diff;
                     groups[gid].count++;
                 }
             });
         }
 
+        let starGroupId = null;
+        let maxAvgLevel = -1;
+        let minAvgDiff = Number.MAX_VALUE;
+
         for (let i = 1; i <= 12; i++) {
             if (groups[i].count > 0) {
                 groups[i].average = Math.round(groups[i].sum / groups[i].count);
+                groups[i].avgDiff = groups[i].diffSum / groups[i].count;
+                
+                if (groups[i].average > 0) {
+                    if (groups[i].average > maxAvgLevel) {
+                        maxAvgLevel = groups[i].average;
+                        minAvgDiff = groups[i].avgDiff;
+                        starGroupId = i;
+                    } else if (groups[i].average === maxAvgLevel) {
+                        if (groups[i].avgDiff < minAvgDiff) {
+                            minAvgDiff = groups[i].avgDiff;
+                            starGroupId = i;
+                        }
+                    }
+                }
             }
         }
 
-        res.json({ groups });
+        res.json({ groups, starGroupId });
     } catch (error) {
         console.error("Error fetching scan data:", error);
         res.status(500).json({ error: 'Failed to fetch scan data' });
