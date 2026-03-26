@@ -107,14 +107,14 @@ app.post('/analyze', upload.single('image'), async (req, res) => {
                     const star = await Jimp.read(path.join(__dirname, 'public', 'star.png'));
                     // Resize star to 10% of width
                     const starWidth = Math.max(30, Math.floor(image.bitmap.width * 0.1));
-                    star.resize(starWidth, Jimp.AUTO);
+                    star.resize({ w: starWidth });
                     
                     const drawX = Math.floor(jsonResult.easiestToRemove.x * image.bitmap.width) - Math.floor(star.bitmap.width / 2);
                     const drawY = Math.floor(jsonResult.easiestToRemove.y * image.bitmap.height) - Math.floor(star.bitmap.height / 2);
                     
                     image.composite(star, drawX, drawY);
                 }
-                finalImageBuffer = await image.getBufferAsync(Jimp.MIME_JPEG);
+                finalImageBuffer = await image.getBuffer("image/jpeg");
                 processedImageBase64 = "data:image/jpeg;base64," + finalImageBuffer.toString('base64');
             } catch (err) {
                 console.error("Failed to process image with Jimp, using original:", err);
