@@ -447,6 +447,9 @@
                             <span class="result-label">Group Count :</span> <span id="groupCount"></span>
                         </div>
                         
+                        <div class="section-title" style="margin-top: 20px; margin-bottom: 10px;">LATEST UPLOADED PHOTO</div>
+                        <img id="uploadedImagePreview" src="" alt="Uploaded Area" style="max-width: 100%; border: 1px solid #ccc; border-radius: 4px; display: none; margin-bottom: 15px;">
+                        
                         <div id="invasiveDetails" style="display: none; border-top: 1px solid #eee; padding-top: 15px;">
                             <div class="section-title" style="margin-bottom: 10px;">IDENTIFIED INVASIVES</div>
                             <ul id="invasiveList" style="list-style-type: disc; margin-left: 20px; font-size: 13px; color: #444; margin-bottom: 15px;"></ul>
@@ -618,13 +621,10 @@
         const thumbnailsContainer = document.getElementById('groupThumbnailsContainer');
         const thumbnailsList = document.getElementById('thumbnailsList');
 
-        groupSelectEl.addEventListener('change', async (e) => {
-            const groupId = e.target.value;
+        async function loadGroupThumbnails(groupId) {
             if (!groupId) return;
-            
             thumbnailsContainer.style.display = 'block';
             thumbnailsList.innerHTML = '<span style="font-size:12px;color:#888;">Loading historical scans...</span>';
-            
             try {
                 const response = await fetch(`/groups/${groupId}/images`);
                 const data = await response.json();
@@ -656,7 +656,9 @@
                 console.error("Error fetching thumbnails:", error);
                 thumbnailsList.innerHTML = '<span style="font-size:12px;color:#888;">Failed to load.</span>';
             }
-        });
+        }
+
+        groupSelectEl.addEventListener('change', (e) => loadGroupThumbnails(e.target.value));
 
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -698,6 +700,10 @@
                     const listUl = document.getElementById('invasiveList');
                     const instructionsDiv = document.getElementById('removalInstructionsList');
 
+                    const uploadedImagePreview = document.getElementById('uploadedImagePreview');
+                    uploadedImagePreview.src = URL.createObjectURL(file);
+                    uploadedImagePreview.style.display = 'block';
+
                     if (data.identifiedInvasives && data.identifiedInvasives.length > 0) {
                         detailsDiv.style.display = 'block';
                         
@@ -733,6 +739,7 @@
                 
                 // Refresh the map overlay with the new data silently
                 await fetchAndUpdateMap();
+                loadGroupThumbnails(group);
             }
         });
     </script>
