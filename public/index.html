@@ -397,16 +397,14 @@
 
             <div class="column-right">
                 <div class="form-lead">
-                    <strong>Looking for your local environmental analysis?</strong> Select a group and upload an aerial
-                    map photo to the <a href="#">Customize Your Analysis</a> box below.
+                    <strong>Oak Farms Campus (Avilla) Environmental Analysis.</strong> Select a campus sector group and upload an aerial
+                    map photo to the <a href="#">Analysis Tool</a> below.
                 </div>
                 <p class="form-body-text">
-                    Each year, ecosystems face challenges from non-native species that can alter habitats, deplete
-                    resources, and disrupt local wildlife. Our native regions log roughly 100,000 observations of
-                    disruptive plants, spanning over 5,000 distinct floodplains and drought areas. Invasive plant events
-                    account for an average of approximately 650 major ecological shifts. W.E.S.L.E.Y.
-                    provides analysis, hydrologic context, and environmental forecasts for the United States for the
-                    protection of native life and enhancement of natural areas.
+                    The Oak Farms Campus in Avilla faces ongoing challenges from non-native species that can alter our unique habitats, deplete
+                    local resources, and disrupt the campus's native wildlife. Managing invasive plants across our distinct sectors ensures our grounds remain healthy and vibrant. 
+                    W.E.S.L.E.Y. provides localized analysis, spatial context, and environmental forecasts strictly tailored to the Avilla grounds 
+                    to protect our native life and enhance our natural areas.
                 </p>
 
                 <div class="tools-box">
@@ -463,6 +461,13 @@
                             <img id="processedImage" src="" alt="Analyzed Area" style="max-width: 100%; border: 1px solid #ccc; border-radius: 4px; display: none;">
                         </div>
                     </div>
+                    
+                    <div id="groupThumbnailsContainer" style="display: none; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e1e8ed;">
+                        <div class="section-title" style="margin-bottom: 15px;">GROUP HISTORY THUMBNAILS</div>
+                        <div id="thumbnailsList" style="display: flex; gap: 10px; flex-wrap: wrap; overflow-x: auto; padding-bottom: 10px;">
+                            <!-- Thumbnails injected here -->
+                        </div>
+                    </div>
                 </div>
 
                 <div class="section-title">LIVE DETECTION MAPPING</div>
@@ -470,6 +475,17 @@
                     Your localized mapping context automatically updates based on recent data from your active session.
                     This visual tool offers spatial reference for distribution. You can click the reference map in the bottom left corner to view it in full size.
                 </p>
+
+                <div class="legend-container" style="background: #f9f9f9; padding: 15px; border: 1px solid #eee; margin-bottom: 40px; border-radius: 4px;">
+                    <div style="font-size: 11px; font-weight: 700; margin-bottom: 15px; color: #555;">SEVERITY LEGEND</div>
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap; font-size: 12px; color: #444;">
+                        <span style="display: flex; align-items: center;"><span style="display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: rgba(0,128,0,0.5); margin-right: 6px;"></span> None</span>
+                        <span style="display: flex; align-items: center;"><span style="display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: rgba(0,0,255,0.5); margin-right: 6px;"></span> Low</span>
+                        <span style="display: flex; align-items: center;"><span style="display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: rgba(255,255,0,0.5); margin-right: 6px;"></span> Medium</span>
+                        <span style="display: flex; align-items: center;"><span style="display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: rgba(255,165,0,0.5); margin-right: 6px;"></span> High</span>
+                        <span style="display: flex; align-items: center;"><span style="display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: rgba(255,0,0,0.5); margin-right: 6px;"></span> Severe</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -587,6 +603,50 @@
             if (level === 'Severe') return '#dc3545';
             return '#333';
         }
+
+        const groupSelectEl = document.getElementById('groupSelect');
+        const thumbnailsContainer = document.getElementById('groupThumbnailsContainer');
+        const thumbnailsList = document.getElementById('thumbnailsList');
+
+        groupSelectEl.addEventListener('change', async (e) => {
+            const groupId = e.target.value;
+            if (!groupId) return;
+            
+            thumbnailsContainer.style.display = 'block';
+            thumbnailsList.innerHTML = '<span style="font-size:12px;color:#888;">Loading historical scans...</span>';
+            
+            try {
+                const response = await fetch(`/groups/${groupId}/images`);
+                const data = await response.json();
+                
+                thumbnailsList.innerHTML = '';
+                if (response.ok && data.images && data.images.length > 0) {
+                    data.images.forEach(imgSrc => {
+                        if (imgSrc) {
+                            const img = document.createElement('img');
+                            img.src = imgSrc;
+                            img.style.width = '60px';
+                            img.style.height = '60px';
+                            img.style.objectFit = 'cover';
+                            img.style.borderRadius = '4px';
+                            img.style.border = '1px solid #ccc';
+                            img.style.cursor = 'pointer';
+                            img.title = 'Click to view full size scan';
+                            img.addEventListener('click', () => {
+                                mapModal.style.display = 'block';
+                                modalMapImg.src = imgSrc;
+                            });
+                            thumbnailsList.appendChild(img);
+                        }
+                    });
+                } else {
+                    thumbnailsList.innerHTML = '<span style="font-size:12px;color:#888;">No recent scans for this group.</span>';
+                }
+            } catch (error) {
+                console.error("Error fetching thumbnails:", error);
+                thumbnailsList.innerHTML = '<span style="font-size:12px;color:#888;">Failed to load.</span>';
+            }
+        });
 
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
