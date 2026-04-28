@@ -18,6 +18,7 @@
     { "src": "/generate-map", "dest": "/server.js" },
     { "src": "/scan-data", "dest": "/server.js" },
     { "src": "/groups/(.*)", "dest": "/server.js" },
+    { "src": "/removal-log", "dest": "/server.js" },
     { "src": "/(.*)", "dest": "/public/$1" }
   ]
 }
