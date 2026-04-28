@@ -71,7 +71,7 @@ app.post('/analyze', upload.single('image'), async (req, res) => {
                 {
                     role: "user",
                     content: [
-                        { type: "text", text: "Analyze this aerial photo for invasive species. Return a JSON object with the following properties: 'level' (ONLY one of: None, Low, Medium, High, Severe), 'identifiedInvasives' (array of species names), 'removalInstructions' (object with species as keys and removal instructions as values), and 'removalDifficulty' (integer from 1 to 100, where 1 is extremely easy and 100 is impossible to remove). Return valid JSON." },
+                        { type: "text", text: "Analyze this aerial photo for invasive species. Be highly vigilant for any signs of non-native vegetation, especially invasive Teasel. Return a JSON object with the following properties: 'level' (ONLY one of: None, Low, Medium, High, Severe), 'identifiedInvasives' (array of species names), 'removalInstructions' (object with species as keys and removal instructions as values), 'removalDifficulty' (integer from 1 to 100, where 1 is extremely easy and 100 is impossible to remove), and 'bestRemovalSeason' (object with species as keys and a string describing the best time of year to remove that species, e.g. 'Early spring before flowering (March-May)'). Erring on the side of caution, if any invasive traits are detected, mark the level accordingly instead of None. Return valid JSON." },
                         {
                             type: "image_url",
                             image_url: {
@@ -85,11 +85,16 @@ app.post('/analyze', upload.single('image'), async (req, res) => {
 
         let jsonResult = {};
         try {
-            jsonResult = JSON.parse(response.choices[0].message.content.trim());
+            let raw = response.choices[0].message.content.trim();
+            // Strip markdown code fences OpenAI sometimes adds (```json ... ```)
+            raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+            jsonResult = JSON.parse(raw);
         } catch (e) {
-            console.error("Failed to parse JSON from OpenAI", e);
+            console.error("Failed to parse JSON from OpenAI. Raw content:", response.choices[0].message.content);
         }
-        const result = jsonResult.level || "None";
+        
+        const rawResult = jsonResult.level || "None";
+        const result = rawResult ? (rawResult.charAt(0).toUpperCase() + rawResult.slice(1).toLowerCase()) : "None";
 
         let averageLabel = "N/A";
         let groupCount = 0;
@@ -111,23 +116,54 @@ app.post('/analyze', upload.single('image'), async (req, res) => {
             // Ideally should upload to cloud storage (e.g. Supabase Storage).
             const relativeImagePath = isVercel ? null : `/uploads/${filename}`;
 
-            // Insert into Supabase
-            // Attempt with new column, fallback if not present
+            // Insert into Supabase — try with all columns, fall back gracefully
+            const identified_invasives = jsonResult.identifiedInvasives || [];
+            const removal_instructions = jsonResult.removalInstructions || {};
+            const best_removal_season = jsonResult.bestRemovalSeason || {};
+
             let insertError = null;
             const { error: err1 } = await supabase
                 .from('scans')
-                .insert([
-                    { group_id: groupId, invasive_level: levelValue, image_path: relativeImagePath, removal_difficulty: difficulty }
-                ]);
-            
+                .insert([{
+                    group_id: groupId,
+                    invasive_level: levelValue,
+                    image_path: relativeImagePath,
+                    removal_difficulty: difficulty,
+                    identified_invasives: identified_invasives,
+                    removal_instructions: removal_instructions,
+                    best_removal_season: best_removal_season
+                }]);
+
             if (err1) {
-                console.warn("Falling back to insert without removal_difficulty column (User may not have run migration).");
+                console.warn("Full insert failed, trying without seasonal column:", err1.message);
                 const { error: err2 } = await supabase
                     .from('scans')
-                    .insert([
-                        { group_id: groupId, invasive_level: levelValue, image_path: relativeImagePath }
-                    ]);
-                insertError = err2;
+                    .insert([{
+                        group_id: groupId,
+                        invasive_level: levelValue,
+                        image_path: relativeImagePath,
+                        removal_difficulty: difficulty,
+                        identified_invasives: identified_invasives,
+                        removal_instructions: removal_instructions
+                    }]);
+                if (err2) {
+                    console.warn("Full insert failed, trying without new columns:", err2.message);
+                    const { error: err3 } = await supabase
+                        .from('scans')
+                        .insert([{
+                            group_id: groupId,
+                            invasive_level: levelValue,
+                            image_path: relativeImagePath,
+                            removal_difficulty: difficulty
+                        }]);
+                    if (err3) {
+                        console.warn("Falling back to minimal insert.");
+                        const { error: err4 } = await supabase
+                            .from('scans')
+                            .insert([{ group_id: groupId, invasive_level: levelValue, image_path: relativeImagePath }]);
+                        insertError = err4;
+                    }
+                }
             }
 
             if (insertError) {
@@ -155,7 +191,8 @@ app.post('/analyze', upload.single('image'), async (req, res) => {
                 groupAverage: averageLabel, 
                 groupCount: groupCount,
                 identifiedInvasives: jsonResult.identifiedInvasives || [],
-                removalInstructions: jsonResult.removalInstructions || {}
+                removalInstructions: jsonResult.removalInstructions || {},
+                bestRemovalSeason: jsonResult.bestRemovalSeason || {}
             });
 
         } else {
@@ -259,6 +296,62 @@ app.get('/groups/:id/images', async (req, res) => {
     } catch (error) {
         console.error("Error fetching group images:", error);
         res.status(500).json({ error: 'Failed to fetch images' });
+    }
+});
+
+// Removal log endpoint — returns all scans with removal data, organised by group
+app.get('/removal-log', async (req, res) => {
+    try {
+        let data = null;
+
+        // Try full query with all new columns
+        const { data: d1, error: e1 } = await supabase
+            .from('scans')
+            .select('group_id, invasive_level, identified_invasives, removal_instructions, best_removal_season, removal_difficulty, created_at')
+            .order('created_at', { ascending: false });
+
+        if (!e1) {
+            data = d1;
+        } else {
+            console.warn('/removal-log: falling back — new columns missing:', e1.message);
+            // Fallback: just base columns — no removal detail available yet
+            const { data: d2, error: e2 } = await supabase
+                .from('scans')
+                .select('group_id, invasive_level, created_at')
+                .order('created_at', { ascending: false });
+            if (e2) throw e2;
+            data = d2;
+        }
+
+        if (!data) data = [];
+
+        // Organise by group
+        const byGroup = {};
+        for (let i = 1; i <= 12; i++) byGroup[i] = [];
+
+        (data || []).forEach(scan => {
+            const gid = parseInt(scan.group_id);
+            if (byGroup[gid] !== undefined) {
+                const invasives = scan.identified_invasives || [];
+                const instructions = scan.removal_instructions || {};
+                // Only include entries that actually have removal data
+                if (invasives.length > 0 || Object.keys(instructions).length > 0) {
+                    byGroup[gid].push({
+                        invasive_level: scan.invasive_level,
+                        identified_invasives: invasives,
+                        removal_instructions: instructions,
+                        best_removal_season: scan.best_removal_season || {},
+                        removal_difficulty: scan.removal_difficulty,
+                        created_at: scan.created_at
+                    });
+                }
+            }
+        });
+
+        res.json({ byGroup });
+    } catch (error) {
+        console.error('Error fetching removal log:', error);
+        res.status(500).json({ error: 'Failed to fetch removal log' });
     }
 });
 

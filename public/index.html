@@ -201,6 +201,58 @@
             background-color: #218838;
         }
 
+        .batch-divider {
+            border: none;
+            border-top: 1px dashed #ccc;
+            margin: 22px 0 18px;
+        }
+
+        #batchUploadBtn {
+            background-color: #5a2d82;
+            color: white;
+            padding: 8px 16px;
+            margin-top: 5px;
+        }
+
+        #batchUploadBtn:hover {
+            background-color: #3e1f5c;
+        }
+
+        #batchProgress {
+            display: none;
+            margin-top: 18px;
+            padding: 14px;
+            background: #f4f0f8;
+            border: 1px solid #c9b8dc;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        #batchProgressBar {
+            width: 100%;
+            height: 8px;
+            background: #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+
+        #batchProgressFill {
+            height: 100%;
+            background: #5a2d82;
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        #batchLog {
+            max-height: 140px;
+            overflow-y: auto;
+            font-size: 11px;
+            color: #444;
+            line-height: 1.8;
+        }
+
         #result-container {
             margin-top: 20px;
             padding-top: 15px;
@@ -372,6 +424,141 @@
             color: #bbb;
             text-decoration: none;
         }
+
+        /* ── Tab Navigation ──────────────────────────────── */
+        .tab-nav {
+            display: flex;
+            gap: 0;
+            border-bottom: 2px solid #0071bc;
+            margin-bottom: 24px;
+        }
+
+        .tab-btn {
+            background: #f1f5f9;
+            color: #555;
+            border: 1px solid #d0dae3;
+            border-bottom: none;
+            padding: 9px 22px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            border-radius: 3px 3px 0 0;
+            transition: background 0.15s, color 0.15s;
+            letter-spacing: 0.4px;
+        }
+
+        .tab-btn:hover {
+            background: #e2ecf7;
+            color: #0071bc;
+        }
+
+        .tab-btn.active {
+            background: #fff;
+            color: #0071bc;
+            border-bottom: 2px solid #fff;
+            margin-bottom: -2px;
+        }
+
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* ── Removal Log ──────────────────────────────────── */
+        .removal-group-card {
+            border: 1px solid #e1e8ed;
+            border-top: 3px solid #0071bc;
+            border-radius: 3px;
+            margin-bottom: 18px;
+            background: #fff;
+        }
+
+        .removal-group-header {
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .removal-group-header:hover { background: #f5f9ff; }
+
+        .removal-group-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #0071bc;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+        }
+
+        .removal-group-badge {
+            font-size: 11px;
+            background: #e8f0fe;
+            color: #0071bc;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .removal-group-body {
+            display: none;
+            padding: 0 16px 14px;
+            border-top: 1px solid #eee;
+        }
+
+        .removal-group-body.open { display: block; }
+
+        .removal-entry {
+            padding: 12px 0;
+            border-bottom: 1px dashed #eee;
+        }
+
+        .removal-entry:last-child { border-bottom: none; }
+
+        .removal-entry-date {
+            font-size: 10px;
+            color: #aaa;
+            margin-bottom: 6px;
+        }
+
+        .removal-species-tag {
+            display: inline-block;
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffc107;
+            border-radius: 10px;
+            font-size: 10px;
+            padding: 2px 8px;
+            margin: 2px 3px 6px 0;
+        }
+
+        .removal-instruction-row {
+            font-size: 12px;
+            color: #444;
+            line-height: 1.6;
+            margin-bottom: 6px;
+        }
+
+        .removal-instruction-row strong { color: #333; }
+
+        .removal-difficulty-bar {
+            height: 5px;
+            background: #eee;
+            border-radius: 3px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .removal-difficulty-fill {
+            height: 100%;
+            border-radius: 3px;
+            background: linear-gradient(90deg, #28a745, #ffc107, #dc3545);
+        }
+
+        #removalLogEmpty {
+            font-size: 13px;
+            color: #888;
+            font-style: italic;
+            padding: 20px 0;
+        }
     </style>
 </head>
 
@@ -396,6 +583,14 @@
             </div>
 
             <div class="column-right">
+                <!-- Tab Navigation -->
+                <div class="tab-nav">
+                    <button class="tab-btn active" id="tabBtnAnalysis" onclick="switchTab('analysis')">Analysis</button>
+                    <button class="tab-btn" id="tabBtnRemoval" onclick="switchTab('removal')">Removal Log</button>
+                </div>
+
+                <!-- Analysis Tab -->
+                <div class="tab-panel active" id="tabAnalysis">
                 <div class="form-lead">
                     <strong>Oak Farms Campus (Avilla) Environmental Analysis.</strong> Select a campus sector group and upload an aerial
                     map photo to the <a href="#">Analysis Tool</a> below.
@@ -436,6 +631,20 @@
                         <button type="submit" id="analyzeBtn">Run Analysis</button>
                     </form>
 
+                    <hr class="batch-divider">
+
+                    <div class="form-group" style="margin-bottom:10px;">
+                        <label for="folderInput" style="color:#5a2d82;">Batch Upload Folder (all images for same group):</label>
+                        <input type="file" id="folderInput" accept="image/*" webkitdirectory multiple>
+                    </div>
+                    <button id="batchUploadBtn">Upload Folder</button>
+
+                    <div id="batchProgress">
+                        <div style="font-size:11px;font-weight:700;color:#5a2d82;margin-bottom:6px;" id="batchProgressLabel">Processing...</div>
+                        <div id="batchProgressBar"><div id="batchProgressFill"></div></div>
+                        <div id="batchLog"></div>
+                    </div>
+
                     <div id="result-container">
                         <div class="result-item">
                             <span class="result-label">Severity Level :</span> <span id="currentResult"></span>
@@ -470,7 +679,21 @@
                             <!-- Thumbnails injected here -->
                         </div>
                     </div>
-                </div>
+                </div><!-- /tools-box -->
+                </div><!-- /tabAnalysis -->
+
+                <!-- Removal Log Tab -->
+                <div class="tab-panel" id="tabRemoval">
+                    <div class="form-lead">
+                        <strong>Area Removal Instructions.</strong> A complete log of AI-generated removal guidance, organised by campus sector group. Data is populated automatically as scans are completed.
+                    </div>
+
+                    <button id="refreshRemovalBtn" style="background:#0071bc;color:#fff;padding:7px 16px;font-size:12px;font-weight:700;border:none;border-radius:2px;cursor:pointer;margin-bottom:22px;" onclick="loadRemovalLog()">&#8635; Refresh Log</button>
+
+                    <div id="removalLogContent">
+                        <div id="removalLogEmpty">Loading removal data&hellip;</div>
+                    </div>
+                </div><!-- /tabRemoval -->
 
                 <div class="section-title">LIVE DETECTION MAPPING</div>
                 <p class="form-body-text" style="margin-bottom: 20px;">
@@ -514,6 +737,105 @@
     </div>
 
     <script>
+        const LEVEL_LABELS = ['None','Low','Medium','High','Severe'];
+
+        // ── Tab switching ────────────────────────────────────────────────────
+        function switchTab(name) {
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tab' + name.charAt(0).toUpperCase() + name.slice(1)).classList.add('active');
+            document.getElementById('tabBtn' + name.charAt(0).toUpperCase() + name.slice(1)).classList.add('active');
+            if (name === 'removal') loadRemovalLog();
+        }
+
+        // ── Removal Log ──────────────────────────────────────────────────────
+        const REMOVAL_LOG_EL = document.getElementById('removalLogContent');
+
+        async function loadRemovalLog() {
+            REMOVAL_LOG_EL.innerHTML = '<div id="removalLogEmpty">Loading removal data&hellip;</div>';
+            try {
+                const res = await fetch('/removal-log');
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Failed');
+                renderRemovalLog(data.byGroup);
+            } catch (err) {
+                REMOVAL_LOG_EL.innerHTML = `<div id="removalLogEmpty">Could not load removal data: ${err.message}</div>`;
+            }
+        }
+
+        function renderRemovalLog(byGroup) {
+            const keys = Object.keys(byGroup).map(Number).sort((a,b) => a-b);
+            const hasAny = keys.some(k => byGroup[k].length > 0);
+            if (!hasAny) {
+                REMOVAL_LOG_EL.innerHTML = '<div id="removalLogEmpty">No removal data yet. Run some scans first.</div>';
+                return;
+            }
+            REMOVAL_LOG_EL.innerHTML = '';
+            keys.forEach(gid => {
+                const entries = byGroup[gid];
+                if (entries.length === 0) return;
+
+                const card = document.createElement('div');
+                card.className = 'removal-group-card';
+
+                const header = document.createElement('div');
+                header.className = 'removal-group-header';
+                header.innerHTML = `
+                    <span class="removal-group-title">Group ${gid} &mdash; Area ${gid}</span>
+                    <span class="removal-group-badge">${entries.length} scan${entries.length > 1 ? 's' : ''}</span>`;
+                header.addEventListener('click', () => body.classList.toggle('open'));
+
+                const body = document.createElement('div');
+                body.className = 'removal-group-body';
+
+                entries.forEach(entry => {
+                    const div = document.createElement('div');
+                    div.className = 'removal-entry';
+
+                    const dateStr = entry.created_at
+                        ? new Date(entry.created_at).toLocaleString()
+                        : 'Unknown date';
+                    const levelName = LEVEL_LABELS[entry.invasive_level] || 'Unknown';
+                    const difficulty = entry.removal_difficulty ?? 50;
+
+                    let speciesTags = (entry.identified_invasives || []).map(s =>
+                        `<span class="removal-species-tag">${s}</span>`
+                    ).join('');
+
+                    let instrHtml = '';
+                    if (entry.removal_instructions && Object.keys(entry.removal_instructions).length > 0) {
+                        instrHtml = Object.entries(entry.removal_instructions).map(([sp, instr]) =>
+                            `<div class="removal-instruction-row"><strong>${sp}:</strong> ${instr}</div>`
+                        ).join('');
+                    } else {
+                        instrHtml = '<div class="removal-instruction-row" style="color:#aaa">No specific instructions recorded.</div>';
+                    }
+
+                    const seasonData = entry.best_removal_season || {};
+                    let seasonHtml = '';
+                    if (Object.keys(seasonData).length > 0) {
+                        seasonHtml = '<div style="margin-top:10px;padding-top:8px;border-top:1px dashed #e0d5f0;"><div style="font-size:10px;font-weight:700;color:#5a2d82;letter-spacing:0.4px;margin-bottom:6px;">BEST REMOVAL SEASON</div>' +
+                            Object.entries(seasonData).map(([sp, season]) =>
+                                `<div style="font-size:12px;color:#444;margin-bottom:4px;">&#128197; <strong>${sp}:</strong> ${season}</div>`
+                            ).join('') + '</div>';
+                    }
+
+                    div.innerHTML = `
+                        <div class="removal-entry-date">${dateStr} &mdash; Severity: <strong>${levelName}</strong></div>
+                        <div style="margin-bottom:6px;">${speciesTags || '<span style="font-size:11px;color:#aaa">No species identified</span>'}</div>
+                        ${instrHtml}
+                        ${seasonHtml}
+                        <div style="font-size:10px;color:#888;margin-top:8px;">Removal difficulty: ${difficulty}/100</div>
+                        <div class="removal-difficulty-bar"><div class="removal-difficulty-fill" style="width:${difficulty}%"></div></div>`;
+                    body.appendChild(div);
+                });
+
+                card.appendChild(header);
+                card.appendChild(body);
+                REMOVAL_LOG_EL.appendChild(card);
+            });
+        }
+
         const form = document.getElementById('uploadForm');
         const resultContainer = document.getElementById('result-container');
         const currentResultSpan = document.getElementById('currentResult');
@@ -660,6 +982,7 @@
 
         groupSelectEl.addEventListener('change', (e) => loadGroupThumbnails(e.target.value));
 
+        // ── Single photo submit ──────────────────────────────────────────────
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             const fileInput = document.getElementById('imageInput');
@@ -669,23 +992,14 @@
 
             if (!file || !group) return;
 
-            const formData = new FormData();
-            formData.append('image', file);
-            formData.append('group', group);
-
             analyzeBtn.textContent = '...';
             analyzeBtn.disabled = true;
             resultContainer.style.display = 'none';
 
             try {
-                const response = await fetch('/analyze', {
-                    method: 'POST',
-                    body: formData
-                });
+                const data = await analyzeSingleFile(file, group);
 
-                const data = await response.json();
-
-                if (response.ok) {
+                if (data && !data.error) {
                     resultContainer.style.display = 'block';
 
                     currentResultSpan.innerHTML = `<strong>${data.result}</strong>`;
@@ -728,7 +1042,7 @@
                     }
 
                 } else {
-                    alert(`Error: ${data.error}`);
+                    alert(`Error: ${data ? data.error : 'Unknown error'}`);
                 }
             } catch (error) {
                 console.error('Error:', error);
@@ -736,11 +1050,95 @@
             } finally {
                 analyzeBtn.textContent = 'Run Analysis';
                 analyzeBtn.disabled = false;
-                
-                // Refresh the map overlay with the new data silently
                 await fetchAndUpdateMap();
                 loadGroupThumbnails(group);
             }
+        });
+
+        // ── Shared analyze helper ────────────────────────────────────────────
+        async function analyzeSingleFile(file, group) {
+            const formData = new FormData();
+            formData.append('image', file);
+            formData.append('group', group);
+            const response = await fetch('/analyze', { method: 'POST', body: formData });
+            return response.json();
+        }
+
+        // ── Batch / folder upload ────────────────────────────────────────────
+        const batchUploadBtn = document.getElementById('batchUploadBtn');
+        const folderInput = document.getElementById('folderInput');
+        const batchProgressEl = document.getElementById('batchProgress');
+        const batchProgressFill = document.getElementById('batchProgressFill');
+        const batchProgressLabel = document.getElementById('batchProgressLabel');
+        const batchLog = document.getElementById('batchLog');
+
+        batchUploadBtn.addEventListener('click', async () => {
+            const groupSelect = document.getElementById('groupSelect');
+            const group = groupSelect.value;
+
+            if (!group) {
+                alert('Please select a group before uploading a folder.');
+                return;
+            }
+
+            const files = Array.from(folderInput.files).filter(f =>
+                f.type.startsWith('image/')
+            );
+
+            if (files.length === 0) {
+                alert('No images found in the selected folder. Please choose a folder containing image files.');
+                return;
+            }
+
+            // Lock UI
+            batchUploadBtn.disabled = true;
+            analyzeBtn.disabled = true;
+            batchProgressEl.style.display = 'block';
+            batchLog.innerHTML = '';
+            batchProgressFill.style.width = '0%';
+            batchProgressLabel.textContent = `Processing 0 / ${files.length} images…`;
+
+            let successCount = 0;
+            let failCount = 0;
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const progressPct = Math.round(((i) / files.length) * 100);
+                batchProgressFill.style.width = progressPct + '%';
+                batchProgressLabel.textContent = `Processing ${i + 1} / ${files.length}: ${file.name}`;
+
+                const logLine = document.createElement('div');
+                logLine.textContent = `⏳ ${file.name}…`;
+                batchLog.appendChild(logLine);
+                batchLog.scrollTop = batchLog.scrollHeight;
+
+                try {
+                    const data = await analyzeSingleFile(file, group);
+                    if (data && !data.error) {
+                        successCount++;
+                        logLine.textContent = `✅ ${file.name} → ${data.result}`;
+                    } else {
+                        failCount++;
+                        logLine.textContent = `❌ ${file.name} → ${data ? data.error : 'Error'}`;
+                    }
+                } catch (err) {
+                    failCount++;
+                    logLine.textContent = `❌ ${file.name} → Network error`;
+                    console.error('Batch error:', err);
+                }
+                batchLog.scrollTop = batchLog.scrollHeight;
+            }
+
+            // Done
+            batchProgressFill.style.width = '100%';
+            batchProgressLabel.textContent = `✔ Done! ${successCount} succeeded, ${failCount} failed.`;
+
+            // Refresh map and thumbnails
+            await fetchAndUpdateMap();
+            loadGroupThumbnails(group);
+
+            batchUploadBtn.disabled = false;
+            analyzeBtn.disabled = false;
         });
     </script>
 </body>
