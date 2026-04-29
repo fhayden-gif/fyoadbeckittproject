@@ -5,7 +5,7 @@
       "src": "server.js",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": ["public/Realmap.jpg"]
+        "includeFiles": ["public/Realmap_v2.jpg"]
       }
     },
     {
